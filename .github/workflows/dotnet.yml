@@ -20,39 +20,61 @@ permissions:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        profile: [
+          {
+            name: Windows,
+            runs_on: windows-latest,
+            runtime_identifier: win-x64
+          },
+          {
+            name: MacOS,
+            runs_on: macos-latest,
+            runtime_identifier: osx-x64
+          },
+          {
+            name: Linux,
+            runs_on: ubuntu-latest,
+            runtime_identifier: linux-x64
+          }
+        ]
+
+    name: Build ${{ matrix.profile.name }}
+    runs-on: ${{ matrix.profile.runs_on }}
+
+    defaults:
+      run:
+        shell: bash
 
     steps:
-    - name: 🛡️ Harden Runner
-      uses: step-security/harden-runner@63c24ba6bd7ba022e95695ff85de572c04a18142 # v2.7.0
-      with:
-        egress-policy: audit
+      - name: 🛡️ Harden Runner
+        uses: step-security/harden-runner@63c24ba6bd7ba022e95695ff85de572c04a18142 # v2.7.0
+        with:
+          egress-policy: audit
 
-    - name: 🛒 Checkout
-      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-      with:
-        fetch-depth: 0
+      - name: 🛒 Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
 
-    - name: 🧰 Setup .NET
-      uses: actions/setup-dotnet@4d6c8fcf3c8f7a60068d26b594648e99df24cee3 # v4.0.0
-      with:
-        global-json-file: global.json
+      - name: 🧰 Setup .NET
+        uses: actions/setup-dotnet@4d6c8fcf3c8f7a60068d26b594648e99df24cee3 # v4.0.0
+        with:
+          global-json-file: global.json
 
-    - name: 🗃️ Setup NuGet cache
-      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
-      with:
-        path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
-        restore-keys: ${{ runner.os }}-nuget-
+      - name: 🗃️ Setup NuGet cache
+        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: ${{ runner.os }}-nuget-
 
-    - name: 📥 Restore dependencies
-      run: dotnet restore --locked-mode
+      - name: 📥 Restore dependencies
+        run: dotnet restore --locked-mode
 
-    - name: 🏗️ Build
-      run: dotnet build --no-restore
+      - name: 🏗️ Build
+        run: dotnet build --no-restore
 
-    - name: ✅ Test AOT (Linux x64)
-      run: dotnet publish -r linux-x64 -c Release
-
-    - name: ✅ Test AOT (Windows x64)
-      run: dotnet publish -r win-x64 -c Release
+      - name: ✅ Test AOT
+        run: dotnet publish -r ${{ matrix.profile.runtime_identifier }} -c Release
